@@ -219,8 +219,8 @@ export default function Dining() {
             <OptimizedImage
               src={diningHeroBanner}
               alt="Dining Banner"
-              className="w-full h-full object-cover"
-              objectFit="cover"
+              className="w-full h-full"
+              objectFit="fill"
               priority={true}
               sizes="100vw"
             />

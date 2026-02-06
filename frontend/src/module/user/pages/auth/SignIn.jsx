@@ -161,10 +161,10 @@ export default function SignIn() {
         const { getRedirectResult, onAuthStateChanged } = await import("firebase/auth")
 
         // Ensure Firebase is initialized
-        ensureFirebaseInitialized()
+        await ensureFirebaseInitialized()
 
         // Check current user immediately (before getRedirectResult)
-        const immediateUser = firebaseAuth.currentUser
+        const immediateUser = firebaseAuth?.currentUser
         console.log("🔍 Immediate current user check:", {
           hasUser: !!immediateUser,
           userEmail: immediateUser?.email
@@ -175,6 +175,11 @@ export default function SignIn() {
           firebaseAuthApp: firebaseAuth?.app?.name,
           currentUser: firebaseAuth?.currentUser?.email || "none"
         })
+
+        if (!firebaseAuth) {
+          console.log("ℹ️ Firebase Auth not ready, skipping redirect check")
+          return
+        }
 
         // First, try to get redirect result (non-blocking with timeout)
         // Note: getRedirectResult returns null if there's no redirect result (normal on first load)
@@ -219,7 +224,7 @@ export default function SignIn() {
           await processSignedInUser(result.user, "redirect-result")
         } else {
           // No redirect result - check if user is already signed in
-          const currentUser = firebaseAuth.currentUser
+          const currentUser = firebaseAuth?.currentUser
           console.log("🔍 Checking current user after redirect check:", {
             hasCurrentUser: !!currentUser,
             userEmail: currentUser?.email,
@@ -368,9 +373,14 @@ export default function SignIn() {
     const setupAuthListener = async () => {
       try {
         const { onAuthStateChanged } = await import("firebase/auth")
-        ensureFirebaseInitialized()
+        await ensureFirebaseInitialized()
 
         console.log("🔔 Setting up auth state listener...")
+
+        if (!firebaseAuth) {
+          console.error("❌ Firebase Auth not initialized, skipping auth listener")
+          return
+        }
 
         unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
           console.log("🔔 Auth state changed:", {
@@ -404,8 +414,8 @@ export default function SignIn() {
     // Also check current user immediately (in case redirect already completed)
     const checkCurrentUser = async () => {
       try {
-        ensureFirebaseInitialized()
-        const currentUser = firebaseAuth.currentUser
+        await ensureFirebaseInitialized()
+        const currentUser = firebaseAuth?.currentUser
         if (currentUser && !redirectHandledRef.current) {
           console.log("✅ Current user found immediately, processing...")
           await processSignedInUser(currentUser, "immediate-check")
@@ -570,31 +580,30 @@ export default function SignIn() {
 
     try {
       // Ensure Firebase is initialized before use
-      ensureFirebaseInitialized()
+      await ensureFirebaseInitialized()
 
       // Validate Firebase Auth instance
       if (!firebaseAuth) {
         throw new Error("Firebase Auth is not initialized. Please check your Firebase configuration.")
       }
 
-      const { signInWithRedirect } = await import("firebase/auth")
+      const { signInWithPopup } = await import("firebase/auth")
 
       // Log current origin for debugging
-      console.log("🚀 Starting Google sign-in redirect...", {
-        origin: window.location.origin,
-        hostname: window.location.hostname,
-        pathname: window.location.pathname
+      console.log("🚀 Starting Google sign-in popup...")
+
+      // Use popup for better UX and error handling
+      const result = await signInWithPopup(firebaseAuth, googleProvider)
+
+      console.log("✅ Popup sign-in successful:", {
+        user: result?.user?.email,
+        operationType: result.operationType
       })
 
-      // Use redirect directly to avoid COOP issues
-      // The redirect result will be handled by the useEffect hook above
-      await signInWithRedirect(firebaseAuth, googleProvider)
-
-      // Note: signInWithRedirect will cause a full page redirect to Google
-      // After user authenticates, they'll be redirected back to this page
-      // The useEffect hook will handle the result when the page loads again
-      console.log("✅ Redirect initiated, user will be redirected to Google...")
-      // Don't set loading to false here - page will redirect
+      if (result && result.user) {
+        // Process signed-in user
+        await processSignedInUser(result.user, "popup-result")
+      }
     } catch (error) {
       console.error("❌ Google sign-in redirect error:", error)
       console.error("Error code:", error?.code)
@@ -609,6 +618,8 @@ export default function SignIn() {
 
       if (errorCode === "auth/configuration-not-found") {
         message = "Firebase configuration error. Please ensure your domain is authorized in Firebase Console. Current domain: " + window.location.hostname
+      } else if (errorCode === "auth/operation-not-allowed") {
+        message = "This sign-in method is disabled. Please enable it in the Firebase Console."
       } else if (errorCode === "auth/popup-blocked") {
         message = "Popup was blocked. Please allow popups and try again."
       } else if (errorCode === "auth/popup-closed-by-user") {

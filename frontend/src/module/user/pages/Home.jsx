@@ -1356,27 +1356,30 @@ export default function Home() {
             }}
           >
             {/* Offer Image - Static, Centered */}
+            {/* Special Offer Badge - Meals Under 200 */}
             <motion.div
-              className="flex-shrink-0 flex flex-col items-center justify-center cursor-pointer"
+              className="flex-shrink-0 flex flex-col items-center gap-2 cursor-pointer group"
               initial={{ opacity: 0, scale: 0.8 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.4 }}
               onClick={() => navigate("/user/under-250")}
             >
-              <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl overflow-hidden">
-                <OptimizedImage
-                  src={offerImage}
-                  alt="Special Offer"
-                  className="w-full h-full"
-                  width={96}
-                  height={96}
-                  sizes="(max-width: 640px) 56px, (max-width: 768px) 80px, 96px"
-                  objectFit="cover"
-                  placeholder="blur"
-                />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center relative">
+                {/* Blue Badge Shape */}
+                <div className="absolute inset-0 bg-[#1e40af] rounded-b-full rounded-t-sm shadow-md border-t-4 border-orange-200 flex flex-col items-center justify-center p-1">
+                  <span className="text-[10px] sm:text-xs font-bold text-white text-center leading-tight">
+                    MEALS UNDER
+                  </span>
+                  <span className="text-sm sm:text-base font-extrabold text-white">
+                    ₹200
+                  </span>
+                  <div className="w-10 h-4 bg-white rounded-full mt-1 flex items-center justify-center">
+                    <span className="text-[8px] font-bold text-[#1e40af]">
+                      Explore
+                    </span>
+                  </div>
+                </div>
               </div>
             </motion.div>
             {loadingRealCategories ? (
@@ -1402,28 +1405,21 @@ export default function Home() {
                     whileHover={{ scale: 1.05, y: -5 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Link to={`/user/category/${category.slug || category.name.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <div className="relative w-32 h-36 sm:w-36 sm:h-40 md:w-40 md:h-44 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800 overflow-hidden group hover:shadow-md transition-all">
-                        {/* Text Content - Top Left */}
-                        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 max-w-[80%]">
-                          <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white leading-tight break-words">
-                            {category.name}
-                          </h3>
-                        </div>
-
-                        {/* Image - Bottom */}
-                        <div className="absolute bottom-0 right-0 w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 transform translate-x-4 translate-y-4 sm:translate-x-2 sm:translate-y-2 group-hover:scale-110 transition-transform duration-300">
-                          <OptimizedImage
-                            src={category.image}
-                            alt={category.name}
-                            className="w-full h-full object-cover rounded-tl-3xl"
-                            sizes="(max-width: 640px) 96px, (max-width: 768px) 112px, 128px"
-                            objectFit="cover"
-                            placeholder="blur"
-                            onError={() => { }}
-                          />
-                        </div>
+                    <Link to={`/user/category/${category.slug || category.name.toLowerCase().replace(/\s+/g, '-')}`} className="flex flex-col items-center gap-2 group">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 relative">
+                        <OptimizedImage
+                          src={category.image}
+                          alt={category.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
+                          objectFit="cover"
+                          placeholder="blur"
+                          onError={() => { }}
+                        />
                       </div>
+                      <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 text-center whitespace-nowrap max-w-[80px] truncate">
+                        {category.name}
+                      </span>
                     </Link>
                   </motion.div>
                 ))}
@@ -1460,27 +1456,20 @@ export default function Home() {
                     key={category._id || index}
                     className="flex-shrink-0 transform transition-all duration-300 hover:scale-105 active:scale-95"
                   >
-                    <Link to={`/user/category/${category.slug || category.label.toLowerCase().replace(/\s+/g, '-')}`}>
-                      <div className="relative w-32 h-36 sm:w-36 sm:h-40 md:w-40 md:h-44 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800 overflow-hidden group hover:shadow-md transition-all">
-                        {/* Text Content - Top Left */}
-                        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-10 max-w-[80%]">
-                          <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 dark:text-white leading-tight break-words">
-                            {category.label}
-                          </h3>
-                        </div>
-
-                        {/* Image - Bottom */}
-                        <div className="absolute bottom-0 right-0 w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 transform translate-x-4 translate-y-4 sm:translate-x-2 sm:translate-y-2 group-hover:scale-110 transition-transform duration-300">
-                          <OptimizedImage
-                            src={category.imageUrl}
-                            alt={category.label}
-                            className="w-full h-full object-cover rounded-tl-3xl"
-                            sizes="(max-width: 640px) 96px, (max-width: 768px) 112px, 128px"
-                            objectFit="cover"
-                            placeholder="blur"
-                          />
-                        </div>
+                    <Link to={`/user/category/${category.slug || category.label.toLowerCase().replace(/\s+/g, '-')}`} className="flex flex-col items-center gap-2 group">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 relative">
+                        <OptimizedImage
+                          src={category.imageUrl}
+                          alt={category.label}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          sizes="(max-width: 640px) 64px, (max-width: 768px) 80px, 96px"
+                          objectFit="cover"
+                          placeholder="blur"
+                        />
                       </div>
+                      <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 text-center whitespace-nowrap max-w-[80px] truncate">
+                        {category.label}
+                      </span>
                     </Link>
                   </div>
                 ))}

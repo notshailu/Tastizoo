@@ -4,6 +4,7 @@ import { Loader2, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
 import AnimatedPage from "../../components/AnimatedPage"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { setAuthData } from "@/lib/utils/auth"
 
 export default function AuthCallback() {
   const navigate = useNavigate()
@@ -35,20 +36,47 @@ export default function AuthCallback() {
           return
         }
 
-        // If no code, it might be a direct redirect (for demo purposes)
+        // Check for direct token from backend (Backend OAuth flow)
+        const token = searchParams.get("token")
+        const userStr = searchParams.get("user")
+
+        if (token) {
+          try {
+            const user = userStr ? JSON.parse(userStr) : null
+
+            // Save auth data
+            setAuthData("user", token, user)
+
+            // Notify app of auth change
+            window.dispatchEvent(new Event("userAuthChanged"))
+
+            setStatus("success")
+
+            // Redirect to home after short delay
+            setTimeout(() => {
+              navigate("/user", { replace: true })
+            }, 1000)
+            return
+          } catch (err) {
+            console.error("Error processing token from URL:", err)
+            throw new Error("Invalid user data received from server")
+          }
+        }
+
+        // If no code and no token, it might be a direct redirect (for demo purposes)
         if (!code) {
           // Simulate OAuth flow for demo
           await new Promise((resolve) => setTimeout(resolve, 2000))
-          
+
           // In a real app, you would:
           // 1. Exchange the code for tokens
           // 2. Get user info from the provider
           // 3. Create/login user in your backend
           // 4. Set authentication tokens
 
-          // For demo, simulate success
-          setStatus("success")
-          
+          // For now, if we don't have a token, we can't really log them in properly
+          // unless this is just a mockup
+
           // Store auth success in sessionStorage
           sessionStorage.setItem("oauthSuccess", JSON.stringify({
             provider: providerParam,
@@ -65,7 +93,7 @@ export default function AuthCallback() {
         // In a real app, exchange code for tokens
         // This is a simplified version
         setStatus("loading")
-        
+
         // Simulate API call to exchange code for tokens
         const response = await fetch("/api/auth/oauth/callback", {
           method: "POST",

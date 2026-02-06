@@ -28,7 +28,7 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 export async function getEnvVar(key, defaultValue = "") {
   try {
     const envVars = await getAllEnvVars();
-    let value = process.env[key] || envVars[key] || defaultValue;
+    let value = envVars[key] || process.env[key] || defaultValue;
 
     // Decrypt if encrypted (for direct access, toEnvObject already decrypts, but this is a safety check)
     if (value && isEncrypted(value)) {

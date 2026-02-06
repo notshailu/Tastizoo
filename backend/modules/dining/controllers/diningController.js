@@ -8,6 +8,7 @@ import DiningStory from "../models/DiningStory.js";
 import TableBooking from "../models/TableBooking.js";
 import DiningReview from "../models/DiningReview.js";
 import Restaurant from "../../restaurant/models/Restaurant.js";
+import emailService from "../../auth/services/emailService.js";
 
 // Get all dining restaurants (with filtering)
 export const getRestaurants = async (req, res) => {
@@ -224,6 +225,15 @@ export const createBooking = async (req, res) => {
       message: "Booking confirmed successfully",
       data: bookingObj,
     });
+
+    // Send confirmation email asynchronously if user has email
+    if (req.user.email) {
+      emailService
+        .sendBookingConfirmation(req.user.email, bookingObj)
+        .catch((err) => {
+          console.error("Failed to send booking confirmation email:", err);
+        });
+    }
   } catch (error) {
     res.status(500).json({
       success: false,
