@@ -294,7 +294,7 @@ export const getRestaurantBookings = async (req, res) => {
 
     const bookings = await TableBooking.find({ restaurant: restaurantId })
       .populate("user", "name phone")
-      .sort({ date: 1, timeSlot: 1 });
+      .sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,

@@ -4,7 +4,10 @@ import {
   errorResponse,
 } from "../../../shared/utils/response.js";
 import EnvironmentVariable from "../models/EnvironmentVariable.js";
-import { clearEnvCache } from "../../../shared/utils/envService.js";
+import {
+  getAllEnvVars,
+  clearEnvCache,
+} from "../../../shared/utils/envService.js";
 import winston from "winston";
 
 const logger = winston.createLogger({
@@ -51,47 +54,8 @@ export const getEnvVariables = asyncHandler(async (req, res) => {
  */
 export const getPublicEnvVariables = asyncHandler(async (req, res) => {
   try {
-    const envVars = await EnvironmentVariable.getOrCreate();
-    let envData = envVars.toEnvObject();
-    let hasChanges = false;
-
-    // List of public keys to check and potentially inject
-    const keysToInject = [
-      { db: "FIREBASE_API_KEY", env: "FIREBASE_API_KEY" },
-      { db: "FIREBASE_AUTH_DOMAIN", env: "FIREBASE_AUTH_DOMAIN" },
-      { db: "FIREBASE_PROJECT_ID", env: "FIREBASE_PROJECT_ID" },
-      { db: "FIREBASE_STORAGE_BUCKET", env: "FIREBASE_STORAGE_BUCKET" },
-      {
-        db: "FIREBASE_MESSAGING_SENDER_ID",
-        env: "FIREBASE_MESSAGING_SENDER_ID",
-      },
-      { db: "FIREBASE_APP_ID", env: "FIREBASE_APP_ID" },
-      { db: "MEASUREMENT_ID", env: "MEASUREMENT_ID" },
-      { db: "VITE_GOOGLE_MAPS_API_KEY", env: "VITE_GOOGLE_MAPS_API_KEY" },
-    ];
-
-    // Also support VITE_ format for injection
-    keysToInject.forEach((mapping) => {
-      // If DB value is empty, try to get from process.env
-      if (!envData[mapping.db]) {
-        const envValue =
-          process.env[mapping.env] || process.env[`VITE_${mapping.env}`];
-        if (envValue) {
-          envVars[mapping.db] = envValue;
-          envVars.markModified(mapping.db);
-          hasChanges = true;
-          logger.info(
-            `Injecting environment variable ${mapping.db} from process.env`,
-          );
-        }
-      }
-    });
-
-    if (hasChanges) {
-      await envVars.save();
-      // Update local envData with the injected values
-      envData = envVars.toEnvObject();
-    }
+    // This now automatically handles injection for all schema fields via getAllEnvVars
+    const envData = await getAllEnvVars();
 
     // Return only public variables that frontend needs
     const publicEnvData = {
