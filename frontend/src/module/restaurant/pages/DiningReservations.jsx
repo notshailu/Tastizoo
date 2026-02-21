@@ -54,10 +54,12 @@ export default function DiningReservations() {
         }
     }
 
-    const filteredBookings = bookings.filter(booking =>
-        booking.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        booking.bookingId?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const filteredBookings = bookings
+        .filter(booking =>
+            booking.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            booking.bookingId?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        .sort((a, b) => b._id.localeCompare(a._id))
 
     if (loading) return <Loader />
 
@@ -160,6 +162,14 @@ export default function DiningReservations() {
                                                 <div>
                                                     <p className="font-bold text-slate-900">{booking.user?.name}</p>
                                                     <p className="text-xs text-slate-500">{booking.user?.phone || 'No phone'}</p>
+                                                    {booking.specialRequest && (
+                                                        <div className="mt-2 flex items-start gap-1.5 p-2 bg-blue-50 rounded-lg border border-blue-100 max-w-[200px]">
+                                                            <MessageSquare className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                                            <p className="text-[10px] text-blue-700 font-medium leading-tight line-clamp-2">
+                                                                {booking.specialRequest}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
@@ -205,14 +215,6 @@ export default function DiningReservations() {
                                                             className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors"
                                                         >
                                                             Check-out
-                                                        </button>
-                                                    )}
-                                                    {booking.specialRequest && (
-                                                        <button
-                                                            title={booking.specialRequest}
-                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                        >
-                                                            <MessageSquare className="w-5 h-5" />
                                                         </button>
                                                     )}
                                                 </div>

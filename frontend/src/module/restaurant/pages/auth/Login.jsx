@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Mail, ChevronDown, Phone } from "lucide-react"
 import { setAuthData } from "@/lib/utils/auth"
@@ -27,7 +27,7 @@ const countryCodes = [
   { code: "+34", country: "ES", flag: "🇪🇸" },
   { code: "+61", country: "AU", flag: "🇦🇺" },
   { code: "+7", country: "RU", flag: "🇷🇺" },
-  { code: "+55", country: "BR", flag: "🇧🇷" }, 
+  { code: "+55", country: "BR", flag: "🇧🇷" },
   { code: "+52", country: "MX", flag: "🇲🇽" },
   { code: "+82", country: "KR", flag: "🇰🇷" },
   { code: "+65", country: "SG", flag: "🇸🇬" },
@@ -66,20 +66,20 @@ export default function RestaurantLogin() {
     if (!phone || phone.trim() === "") {
       return "Phone number is required"
     }
-    
+
     // Remove any non-digit characters for validation
     const digitsOnly = phone.replace(/\D/g, "")
-    
+
     // Minimum length check (at least 7 digits)
     if (digitsOnly.length < 7) {
       return "Phone number must be at least 7 digits"
     }
-    
+
     // Maximum length check (typically 15 digits for international numbers)
     if (digitsOnly.length > 15) {
       return "Phone number is too long"
     }
-    
+
     // Country-specific validation (India +91)
     if (countryCode === "+91") {
       if (digitsOnly.length !== 10) {
@@ -91,7 +91,7 @@ export default function RestaurantLogin() {
         return "Invalid Indian mobile number"
       }
     }
-    
+
     return ""
   }
 
@@ -99,15 +99,15 @@ export default function RestaurantLogin() {
     // Mark all fields as touched
     setTouched({ phone: true })
     setApiError("")
-    
+
     // Validate
     const phoneError = validatePhone(formData.phone, formData.countryCode)
-    
+
     if (phoneError) {
       setErrors({ phone: phoneError })
       return
     }
-    
+
     // Clear errors if validation passes
     setErrors({ phone: "" })
 
@@ -148,12 +148,12 @@ export default function RestaurantLogin() {
     if (!email || email.trim() === "") {
       return "Email is required"
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
       return "Please enter a valid email address"
     }
-    
+
     return ""
   }
 
@@ -164,7 +164,7 @@ export default function RestaurantLogin() {
       email: value,
     }
     setFormData(newFormData)
-    
+
     // Validate if field has been touched
     if (touched.email) {
       const error = validateEmail(value)
@@ -186,15 +186,15 @@ export default function RestaurantLogin() {
     // Mark email field as touched
     setTouched({ ...touched, email: true })
     setApiError("")
-    
+
     // Validate
     const emailError = validateEmail(formData.email)
-    
+
     if (emailError) {
       setErrors({ ...errors, email: emailError })
       return
     }
-    
+
     // Clear errors if validation passes
     setErrors({ ...errors, email: "" })
 
@@ -226,49 +226,104 @@ export default function RestaurantLogin() {
     }
   }
 
-  const handleGoogleLogin = async () => {
-    setApiError("")
+  const redirectHandledRef = useRef(false)
+
+  // Helper function to process signed-in user
+  const processSignedInUser = async (user, source = "unknown") => {
+    if (redirectHandledRef.current) return
+    redirectHandledRef.current = true
     setIsSending(true)
+    setApiError("")
 
     try {
-      const { signInWithPopup } = await import("firebase/auth")
-
-      // Sign in with Google using Firebase Auth
-      const result = await signInWithPopup(firebaseAuth, googleProvider)
-      const user = result.user
-
-      // Get Firebase ID token
       const idToken = await user.getIdToken()
-
-      // Call backend to login/register via Firebase Google
       const response = await restaurantAPI.firebaseGoogleLogin(idToken)
       const data = response?.data?.data || {}
 
       const accessToken = data.accessToken
       const restaurant = data.restaurant
 
-      if (!accessToken || !restaurant) {
+      if (accessToken && restaurant) {
+        setAuthData("restaurant", accessToken, restaurant)
+        window.dispatchEvent(new Event("restaurantAuthChanged"))
+        navigate("/restaurant", { replace: true })
+      } else {
         throw new Error("Invalid response from server")
       }
+    } catch (error) {
+      console.error(`❌ Error processing user from ${source}:`, error)
+      redirectHandledRef.current = false
+      setIsSending(false)
+      setApiError(error?.response?.data?.message || error?.message || "Authentication failed")
+    }
+  }
 
-      // Store auth data for restaurant module using utility function
-      setAuthData("restaurant", accessToken, restaurant)
+  // Handle Firebase auth state and redirect results
+  useEffect(() => {
+    let unsubscribe = null
 
-      // Notify any listeners that auth state has changed
-      window.dispatchEvent(new Event("restaurantAuthChanged"))
+    const handleRedirectResult = async () => {
+      try {
+        const { getRedirectResult } = await import("firebase/auth")
+        if (!firebaseAuth) return
 
-      // Navigate to restaurant home
-      navigate("/restaurant")
+        let result = null
+        try {
+          result = await Promise.race([
+            getRedirectResult(firebaseAuth),
+            new Promise((resolve) => setTimeout(() => resolve(null), 3000))
+          ])
+        } catch (e) { result = null }
+
+        if (result?.user) {
+          await processSignedInUser(result.user, "redirect-result")
+        } else if (firebaseAuth.currentUser && !redirectHandledRef.current) {
+          await processSignedInUser(firebaseAuth.currentUser, "current-user-check")
+        }
+      } catch (error) {
+        console.error("❌ Google sign-in check error:", error)
+        setIsSending(false)
+      }
+    }
+
+    const setupAuthListener = async () => {
+      try {
+        const { onAuthStateChanged } = await import("firebase/auth")
+        if (!firebaseAuth) return
+
+        unsubscribe = onAuthStateChanged(firebaseAuth, async (user) => {
+          if (user && !redirectHandledRef.current) {
+            await processSignedInUser(user, "auth-state-listener")
+          }
+        })
+      } catch (e) {
+        console.error("❌ Auth listener error:", e)
+      }
+    }
+
+    setupAuthListener()
+    setTimeout(handleRedirectResult, 500)
+
+    return () => { if (unsubscribe) unsubscribe() }
+  }, [navigate])
+
+  const handleGoogleLogin = async () => {
+    setApiError("")
+    setIsSending(true)
+    redirectHandledRef.current = false
+
+    try {
+      const { signInWithPopup } = await import("firebase/auth")
+      const result = await signInWithPopup(firebaseAuth, googleProvider)
+      if (result?.user) {
+        await processSignedInUser(result.user, "popup-result")
+      }
     } catch (error) {
       console.error("Firebase Google login error:", error)
-      const message =
-        error?.response?.data?.message ||
-        error?.response?.data?.error ||
-        error?.message ||
-        "Failed to login with Google. Please try again."
-      setApiError(message)
-    } finally {
       setIsSending(false)
+      if (error?.code !== "auth/popup-closed-by-user") {
+        setApiError(error?.message || "Google sign-in failed")
+      }
     }
   }
 
@@ -280,11 +335,11 @@ export default function RestaurantLogin() {
       phone: value,
     }
     setFormData(newFormData)
-    
+
     // Real-time validation
     const error = validatePhone(value, formData.countryCode)
     setErrors({ ...errors, phone: error })
-    
+
     // Mark as touched when user starts typing
     if (!touched.phone && value.length > 0) {
       setTouched({ ...touched, phone: true })
@@ -307,7 +362,7 @@ export default function RestaurantLogin() {
       countryCode: value,
     }
     setFormData(newFormData)
-    
+
     // Re-validate phone if it's been touched
     if (touched.phone) {
       const error = validatePhone(formData.phone, value)
@@ -322,7 +377,7 @@ export default function RestaurantLogin() {
     <div className="max-h-screen h-screen bg-white flex flex-col">
       {/* Header with Back Button */}
       <div className="relative flex items-center justify-center py-4 px-4 mt-2">
-        
+
         <button
           onClick={() => navigate("/restaurant/welcome")}
           className="absolute left-4 top-4"
@@ -336,24 +391,24 @@ export default function RestaurantLogin() {
       <div className="flex flex-col items-center pt-8 pb-8 px-6">
         {/* Appzeto Logo */}
         <div>
-          <h1 
+          <h1
             className="text-3xl italic md:text-4xl tracking-wide font-extrabold text-black"
             style={{
               WebkitTextStroke: "0.5px black",
               textStroke: "0.5px black"
             }}
           >
-          
+
             {companyName.toLowerCase()}
           </h1>
         </div>
-        
+
         {/* Restaurant Partner Badge */}
         <div className="">
           <span className="text-gray-600 font-light text-sm tracking-wide block text-center">
-          — restaurant partner —
+            — restaurant partner —
           </span>
-        </div>        
+        </div>
       </div>
 
       {/* Main Content - Form Section */}
@@ -362,7 +417,7 @@ export default function RestaurantLogin() {
           {/* Instruction Text */}
           <div className="text-center">
             <p className="text-base text-gray-700 leading-relaxed">
-              {loginMethod === "email" 
+              {loginMethod === "email"
                 ? "Enter your registered email and we will send an OTP to continue"
                 : "Enter your registered phone number and we will send an OTP to continue"
               }
@@ -398,7 +453,7 @@ export default function RestaurantLogin() {
                     ))}
                   </SelectContent>
                 </Select>
-                
+
                 {/* Phone Number Input */}
                 <div className="flex-1 flex flex-col">
                   <input
@@ -408,11 +463,10 @@ export default function RestaurantLogin() {
                     value={formData.phone}
                     onChange={handlePhoneChange}
                     onBlur={handlePhoneBlur}
-                  className={`w-full px-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 text-base border rounded-lg min-w-0 bg-white ${
-                    errors.phone && formData.phone.length > 0
+                    className={`w-full px-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 text-base border rounded-lg min-w-0 bg-white ${errors.phone && formData.phone.length > 0
                       ? "border-red-500 focus:ring-red-500 focus:border-red-500"
                       : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                  }`}
+                      }`}
                     style={{ height: '48px' }}
                   />
                   {errors.phone && formData.phone.length > 0 && (
@@ -430,11 +484,10 @@ export default function RestaurantLogin() {
               <Button
                 onClick={handleSendOTP}
                 disabled={!isValidPhone || isSending}
-                className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${
-                  isValidPhone && !isSending
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+                className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${isValidPhone && !isSending
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
               >
                 {isSending ? "Sending OTP..." : "Send OTP"}
               </Button>
@@ -452,11 +505,10 @@ export default function RestaurantLogin() {
                   value={formData.email}
                   onChange={handleEmailChange}
                   onBlur={handleEmailBlur}
-                  className={`w-full px-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 text-base border rounded-lg bg-white ${
-                    errors.email && formData.email.length > 0
-                      ? "border-red-500 focus:ring-red-500 focus:border-red-500"
-                      : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                  }`}
+                  className={`w-full px-4 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 text-base border rounded-lg bg-white ${errors.email && formData.email.length > 0
+                    ? "border-red-500 focus:ring-red-500 focus:border-red-500"
+                    : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                    }`}
                   style={{ height: '48px' }}
                 />
                 {errors.email && formData.email.length > 0 && (
@@ -473,11 +525,10 @@ export default function RestaurantLogin() {
               <Button
                 onClick={handleSendEmailOTP}
                 disabled={!isValidEmail || isSending}
-                className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${
-                  isValidEmail && !isSending
-                    ? "bg-blue-600 hover:bg-blue-700 text-white"
-                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                }`}
+                className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${isValidEmail && !isSending
+                  ? "bg-blue-600 hover:bg-blue-700 text-white"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  }`}
               >
                 {isSending ? "Sending OTP..." : "Send OTP"}
               </Button>

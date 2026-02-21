@@ -25,8 +25,8 @@ export default function OTP() {
 
   useEffect(() => {
     // Redirect to home if already authenticated
-    const isAuthenticated = localStorage.getItem("user_authenticated") === "true"
-    if (isAuthenticated) {
+    const { isModuleAuthenticated } = import("@/lib/utils/auth")
+    if (isModuleAuthenticated && isModuleAuthenticated("user")) {
       navigate("/user", { replace: true })
       return
     }
@@ -34,32 +34,29 @@ export default function OTP() {
     // Get auth data from sessionStorage
     const stored = sessionStorage.getItem("userAuthData")
     if (!stored) {
-      // No auth data, redirect to sign in
       navigate("/user/auth/sign-in", { replace: true })
       return
     }
     const data = JSON.parse(stored)
     setAuthData(data)
 
-    // Handle both phone and email
     if (data.method === "email" && data.email) {
       setContactType("email")
       setContactInfo(data.email)
     } else if (data.phone) {
       setContactType("phone")
-      // Extract and format phone number for display
       const phoneMatch = data.phone?.match(/(\+\d+)\s*(.+)/)
       if (phoneMatch) {
-        const formattedPhone = `${phoneMatch[1]}-${phoneMatch[2].replace(/\D/g, "")}`
-        setContactInfo(formattedPhone)
+        setContactInfo(`${phoneMatch[1]}-${phoneMatch[2].replace(/\D/g, "")}`)
       } else {
         setContactInfo(data.phone || "")
       }
-      
-      // OTP auto-fill removed - user must manually enter OTP
     }
 
-    // Start resend timer (60 seconds)
+    startResendTimer()
+  }, [navigate])
+
+  const startResendTimer = () => {
     setResendTimer(60)
     const timer = setInterval(() => {
       setResendTimer((prev) => {
@@ -70,158 +67,103 @@ export default function OTP() {
         return prev - 1
       })
     }, 1000)
-
     return () => clearInterval(timer)
-  }, [navigate])
+  }
 
   useEffect(() => {
-    // Focus first input on mount
     if (inputRefs.current[0] && !showNameInput) {
       inputRefs.current[0].focus()
     }
   }, [showNameInput])
 
   const handleChange = (index, value) => {
-    // Only allow digits
-    if (value && !/^\d$/.test(value)) {
-      return
-    }
+    if (value && !/^\d$/.test(value)) return
 
     const newOtp = [...otp]
     newOtp[index] = value
     setOtp(newOtp)
     setError("")
 
-    // Auto-focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus()
     }
 
-    // Auto-submit when all 6 digits are entered and we are in OTP step
     if (!showNameInput && newOtp.every((digit) => digit !== "") && newOtp.length === 6) {
       handleVerify(newOtp.join(""))
     }
   }
 
   const handleKeyDown = (index, e) => {
-    // Handle backspace
     if (e.key === "Backspace") {
       if (otp[index]) {
-        // If current input has value, clear it
         const newOtp = [...otp]
         newOtp[index] = ""
         setOtp(newOtp)
       } else if (index > 0) {
-        // If current input is empty, move to previous and clear it
         inputRefs.current[index - 1]?.focus()
         const newOtp = [...otp]
         newOtp[index - 1] = ""
         setOtp(newOtp)
       }
     }
-    // Handle paste
-    if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault()
-      navigator.clipboard.readText().then((text) => {
-        const digits = text.replace(/\D/g, "").slice(0, 6).split("")
-        const newOtp = [...otp]
-        digits.forEach((digit, i) => {
-          if (i < 6) {
-            newOtp[i] = digit
-          }
-        })
-        setOtp(newOtp)
-        if (!showNameInput && digits.length === 6) {
-          handleVerify(newOtp.join(""))
-        } else {
-          inputRefs.current[digits.length]?.focus()
-        }
-      })
-    }
   }
 
   const handlePaste = (e) => {
     e.preventDefault()
-    const pastedData = e.clipboardData.getData("text")
+    const pastedData = e.clipboardData.getData("text") || ""
     const digits = pastedData.replace(/\D/g, "").slice(0, 6).split("")
+
+    if (digits.length === 0) return
+
     const newOtp = [...otp]
     digits.forEach((digit, i) => {
-      if (i < 6) {
-        newOtp[i] = digit
-      }
+      if (i < 6) newOtp[i] = digit
     })
     setOtp(newOtp)
+
     if (!showNameInput && digits.length === 6) {
       handleVerify(newOtp.join(""))
     } else {
-      inputRefs.current[digits.length]?.focus()
+      const nextIndex = Math.min(digits.length, 5)
+      inputRefs.current[nextIndex]?.focus()
     }
   }
 
   const handleVerify = async (otpValue = null) => {
-    if (showNameInput) {
-      // In name collection step, ignore OTP auto-submit
-      return
-    }
+    if (showNameInput) return
 
     const code = otpValue || otp.join("")
-    
-    if (code.length !== 6) {
-      return
-    }
+    if (code.length !== 6) return
 
     setIsLoading(true)
     setError("")
 
     try {
-      const phone = authData?.method === "phone" ? authData.phone : null
-      const email = authData?.method === "email" ? authData.email : null
-      const purpose = authData?.isSignUp ? "register" : "login"
+      const { phone, email, isSignUp } = authData
+      const purpose = isSignUp ? "register" : "login"
 
-      // First attempt: verify OTP for login/register with user role
       const response = await authAPI.verifyOTP(phone, code, purpose, null, email, "user")
       const data = response?.data?.data || {}
 
-      // If backend tells us this is a new user, ask for name
       if (data.needsName) {
         setShowNameInput(true)
         setVerifiedOtp(code)
         setOtp(["", "", "", "", "", ""])
-        setSuccess(false)
         setIsLoading(false)
         return
       }
 
-      // Otherwise, OTP verified and user logged in/registered
-      const accessToken = data.accessToken
-      const user = data.user
+      const { accessToken, user } = data
+      if (!accessToken || !user) throw new Error("Invalid response from server")
 
-      if (!accessToken || !user) {
-        throw new Error("Invalid response from server")
-      }
-
-      // Clear auth data from sessionStorage
       sessionStorage.removeItem("userAuthData")
-
-      // Replace old token with new one (handles cross-module login)
       setUserAuthData("user", accessToken, user)
-
-      // Dispatch custom event for same-tab updates
       window.dispatchEvent(new Event("userAuthChanged"))
 
       setSuccess(true)
-
-      // Redirect to user home after short delay
-      setTimeout(() => {
-        navigate("/user")
-      }, 500)
+      setTimeout(() => navigate("/user"), 1000)
     } catch (err) {
-      const message =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Failed to verify OTP. Please try again."
-      setError(message)
+      setError(err?.response?.data?.message || err?.message || "Verification failed")
     } finally {
       setIsLoading(false)
     }
@@ -234,105 +176,49 @@ export default function OTP() {
       return
     }
 
-    if (trimmedName.length < 2) {
-      setNameError("Name must be at least 2 characters")
-      return
-    }
-
-    if (!verifiedOtp) {
-      setError("OTP verification step missing. Please request a new OTP.")
-      return
-    }
-
     setIsLoading(true)
     setError("")
-    setNameError("")
 
     try {
-      const phone = authData?.method === "phone" ? authData.phone : null
-      const email = authData?.method === "email" ? authData.email : null
-      const purpose = authData?.isSignUp ? "register" : "login"
+      const { phone, email, isSignUp } = authData
+      const purpose = isSignUp ? "register" : "login"
 
-      // Second call with name to auto-register and login
       const response = await authAPI.verifyOTP(phone, verifiedOtp, purpose, trimmedName, email, "user")
       const data = response?.data?.data || {}
 
-      const accessToken = data.accessToken
-      const user = data.user
+      const { accessToken, user } = data
+      if (!accessToken || !user) throw new Error("Invalid response from server")
 
-      if (!accessToken || !user) {
-        throw new Error("Invalid response from server")
-      }
-
-      // Clear auth data from sessionStorage
       sessionStorage.removeItem("userAuthData")
-
-      // Replace old token with new one (handles cross-module login)
       setUserAuthData("user", accessToken, user)
-
-      // Dispatch custom event for same-tab updates
       window.dispatchEvent(new Event("userAuthChanged"))
 
       setSuccess(true)
-
-      // Redirect to user home after short delay
-      setTimeout(() => {
-        navigate("/user")
-      }, 500)
+      setTimeout(() => navigate("/user"), 1000)
     } catch (err) {
-      const message =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Failed to complete registration. Please try again."
-      setError(message)
+      setError(err?.response?.data?.message || err?.message || "Registration failed")
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleResend = async () => {
-    if (resendTimer > 0) return
+    if (resendTimer > 0 || isLoading) return
 
     setIsLoading(true)
     setError("")
 
     try {
-      const phone = authData?.method === "phone" ? authData.phone : null
-      const email = authData?.method === "email" ? authData.email : null
-      const purpose = authData?.isSignUp ? "register" : "login"
-
-      // Call backend to resend OTP
-      await authAPI.sendOTP(phone, purpose, email)
+      const { phone, email, isSignUp } = authData
+      await authAPI.sendOTP(phone, isSignUp ? "register" : "login", email)
+      startResendTimer()
+      setOtp(["", "", "", "", "", ""])
+      inputRefs.current[0]?.focus()
     } catch (err) {
-      const message =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
-        "Failed to resend OTP. Please try again."
-      setError(message)
+      setError("Failed to resend OTP. Please try again.")
     } finally {
       setIsLoading(false)
     }
-
-    // Reset timer to 60 seconds
-    setResendTimer(60)
-    const timer = setInterval(() => {
-      setResendTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    setOtp(["", "", "", "", "", ""])
-    setShowNameInput(false)
-    setName("")
-    setNameError("")
-    setVerifiedOtp("")
-    inputRefs.current[0]?.focus()
   }
 
   if (!authData) {
@@ -351,7 +237,7 @@ export default function OTP() {
           <ArrowLeft className="h-5 w-5 md:h-6 md:w-6 text-black dark:text-white" />
         </button>
         <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-black dark:text-white">OTP Verification</h1>
-      </div> 
+      </div>
 
       {/* Main Content */}
       <div className="flex flex-col justify-center px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 pt-8 sm:pt-12 md:pt-16 lg:pt-20 pb-12 sm:pb-16 md:pb-20">
@@ -362,8 +248,8 @@ export default function OTP() {
               {showNameInput
                 ? "You're almost done! Please tell us your name to complete registration."
                 : contactType === "email"
-                ? "We have sent a verification code to"
-                : "We have sent a verification code to"}
+                  ? "We have sent a verification code to"
+                  : "We have sent a verification code to"}
             </p>
             {!showNameInput && (
               <p className="text-base md:text-lg lg:text-xl text-black dark:text-white font-medium">
@@ -439,9 +325,8 @@ export default function OTP() {
                   }}
                   disabled={isLoading}
                   placeholder="Enter your name"
-                  className={`h-11 md:h-14 text-base md:text-lg border-2 ${
-                    nameError ? "border-red-500" : "border-gray-300 dark:border-gray-700"
-                  } bg-white dark:bg-[#1a1a1a] text-black dark:text-white rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-[#E23744]`}
+                  className={`h-11 md:h-14 text-base md:text-lg border-2 ${nameError ? "border-red-500" : "border-gray-300 dark:border-gray-700"
+                    } bg-white dark:bg-[#1a1a1a] text-black dark:text-white rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-[#E23744]`}
                 />
                 {nameError && (
                   <p className="text-xs md:text-sm text-red-500 text-left">

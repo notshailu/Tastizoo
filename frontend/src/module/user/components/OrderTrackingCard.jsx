@@ -50,7 +50,7 @@ export default function OrderTrackingCard() {
   useEffect(() => {
     // Combine context orders and API orders
     const allOrders = [...contextOrders, ...apiOrders];
-    
+
     // Remove duplicates by ID
     const uniqueOrders = allOrders.filter((order, index, self) =>
       index === self.findIndex((o) => (o.id || o._id) === (order.id || order._id))
@@ -70,25 +70,25 @@ export default function OrderTrackingCard() {
     // Find active order - any order that is NOT delivered, cancelled, or completed
     const active = uniqueOrders.find(order => {
       const status = (order.status || order.deliveryState?.status || '').toLowerCase();
-      const isInactive = status === 'delivered' || 
-                        status === 'cancelled' || 
-                        status === 'completed' ||
-                        status === '';
-      
+      const isInactive = status === 'delivered' ||
+        status === 'cancelled' ||
+        status === 'completed' ||
+        status === '';
+
       if (isInactive) {
         return false;
       }
-      
+
       // If status exists and is not inactive, it's active
       return true;
     });
-    
+
     console.log('✅ OrderTrackingCard - Active order found:', active ? {
       id: active.id || active._id,
       status: active.status || active.deliveryState?.status,
       restaurant: active.restaurant || active.restaurantName
     } : 'No active order');
-    
+
     if (active) {
       setActiveOrder(active);
       // Calculate estimated delivery time
@@ -176,7 +176,7 @@ export default function OrderTrackingCard() {
   }, [activeOrder, timeRemaining, contextOrders.length, apiOrders.length]);
 
   if (!activeOrder) {
-    console.log('❌ OrderTrackingCard - No active order, not rendering');
+    // console.log('OrderTrackingCard - No active order, not rendering');
     return null;
   }
 
@@ -189,10 +189,10 @@ export default function OrderTrackingCard() {
 
   const restaurantName = activeOrder.restaurant || activeOrder.restaurantName || activeOrder.restaurantName || 'Restaurant';
   const statusText = orderStatus === 'preparing' || orderStatus === 'confirmed' || orderStatus === 'pending'
-    ? 'Preparing your order' 
+    ? 'Preparing your order'
     : orderStatus === 'out_for_delivery' || orderStatus === 'outfordelivery' || orderStatus === 'on_way'
-    ? 'On the way'
-    : 'Preparing your order';
+      ? 'On the way'
+      : 'Preparing your order';
 
   console.log('✅ OrderTrackingCard - Rendering card:', {
     restaurantName,

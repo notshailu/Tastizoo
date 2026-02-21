@@ -40,6 +40,7 @@ const colorOptions = [
 ]
 
 export default function AboutUs() {
+  const companyName = useCompanyName()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [aboutData, setAboutData] = useState({
@@ -109,9 +110,9 @@ export default function AboutUs() {
         ...aboutData,
         features: aboutData.features.filter((_, i) => i !== index)
       }
-      
+
       setAboutData(updatedData)
-      
+
       // Save to backend immediately
       setSaving(true)
       const response = await api.put(API_ENDPOINTS.ADMIN.ABOUT, updatedData)
@@ -133,7 +134,7 @@ export default function AboutUs() {
     setAboutData(prev => {
       const newFeatures = [...prev.features]
       newFeatures[index] = { ...newFeatures[index], [field]: value }
-      
+
       // Update bgColor when color changes
       if (field === 'color') {
         const colorOption = colorOptions.find(opt => opt.value === value)
@@ -141,7 +142,7 @@ export default function AboutUs() {
           newFeatures[index].bgColor = colorOption.bg
         }
       }
-      
+
       return { ...prev, features: newFeatures }
     })
   }

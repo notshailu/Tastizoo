@@ -22,34 +22,39 @@ export default function RestaurantOTP() {
   const inputRefs = useRef([])
 
   useEffect(() => {
-    // Get auth data from sessionStorage
-    const stored = sessionStorage.getItem("restaurantAuthData")
-    if (stored) {
-      const data = JSON.parse(stored)
-      setAuthData(data)
-      
-      // Handle both phone and email
-      if (data.method === "email" && data.email) {
-        setContactType("email")
-        setContactInfo(data.email)
-      } else if (data.phone) {
-        setContactType("phone")
-        // Extract and format phone number for display
-        const phoneMatch = data.phone?.match(/(\+\d+)\s*(.+)/)
-        if (phoneMatch) {
-          const formattedPhone = `${phoneMatch[1]}-${phoneMatch[2].replace(/\D/g, "")}`
-          setContactInfo(formattedPhone)
-        } else {
-          setContactInfo(data.phone || "")
-        }
-      }
-    } else {
-      // No auth data, redirect to login
-      navigate("/restaurant/login")
+    // Redirect to home if already authenticated
+    const { isModuleAuthenticated } = import("@/lib/utils/auth")
+    if (isModuleAuthenticated && isModuleAuthenticated("restaurant")) {
+      navigate("/restaurant", { replace: true })
       return
     }
 
-    // Start resend timer (60 seconds)
+    // Get auth data from sessionStorage
+    const stored = sessionStorage.getItem("restaurantAuthData")
+    if (!stored) {
+      navigate("/restaurant/login", { replace: true })
+      return
+    }
+    const data = JSON.parse(stored)
+    setAuthData(data)
+
+    if (data.method === "email" && data.email) {
+      setContactType("email")
+      setContactInfo(data.email)
+    } else if (data.phone) {
+      setContactType("phone")
+      const phoneMatch = data.phone?.match(/(\+\d+)\s*(.+)/)
+      if (phoneMatch) {
+        setContactInfo(`${phoneMatch[1]}-${phoneMatch[2].replace(/\D/g, "")}`)
+      } else {
+        setContactInfo(data.phone || "")
+      }
+    }
+
+    startResendTimer()
+  }, [navigate])
+
+  const startResendTimer = () => {
     setResendTimer(60)
     const timer = setInterval(() => {
       setResendTimer((prev) => {
@@ -60,34 +65,27 @@ export default function RestaurantOTP() {
         return prev - 1
       })
     }, 1000)
-
     return () => clearInterval(timer)
-  }, [navigate])
+  }
 
   useEffect(() => {
-    // Focus first input on mount
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus()
     }
   }, [])
 
   const handleChange = (index, value) => {
-    // Only allow digits
-    if (value && !/^\d$/.test(value)) {
-      return
-    }
+    if (value && !/^\d$/.test(value)) return
 
     const newOtp = [...otp]
     newOtp[index] = value
     setOtp(newOtp)
     setError("")
 
-    // Auto-focus next input
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus()
     }
 
-    // Auto-submit when all 6 digits are entered
     if (newOtp.every((digit) => digit !== "") && newOtp.length === 6) {
       handleVerify(newOtp.join(""))
     }
@@ -106,49 +104,32 @@ export default function RestaurantOTP() {
         setOtp(newOtp)
       }
     }
-    // Handle paste
-    if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault()
-      navigator.clipboard.readText().then((text) => {
-        const digits = text.replace(/\D/g, "").slice(0, 6).split("")
-        const newOtp = [...otp]
-        digits.forEach((digit, i) => {
-          if (i < 6) {
-            newOtp[i] = digit
-          }
-        })
-        setOtp(newOtp)
-        if (digits.length === 6) {
-          handleVerify(newOtp.join(""))
-        } else {
-          inputRefs.current[digits.length]?.focus()
-        }
-      })
-    }
   }
 
   const handlePaste = (e) => {
     e.preventDefault()
-    const pastedData = e.clipboardData.getData("text")
+    const pastedData = e.clipboardData.getData("text") || ""
     const digits = pastedData.replace(/\D/g, "").slice(0, 6).split("")
+
+    if (digits.length === 0) return
+
     const newOtp = [...otp]
     digits.forEach((digit, i) => {
-      if (i < 6) {
-        newOtp[i] = digit
-      }
+      if (i < 6) newOtp[i] = digit
     })
     setOtp(newOtp)
+
     if (digits.length === 6) {
       handleVerify(newOtp.join(""))
-      return
     } else {
-      inputRefs.current[digits.length]?.focus()
+      const nextIndex = Math.min(digits.length, 5)
+      inputRefs.current[nextIndex]?.focus()
     }
   }
 
   const handleVerify = async (otpValue = null) => {
     const code = otpValue || otp.join("")
-    
+
     if (code.length !== 6) {
       setError("Please enter the complete 6-digit code")
       return
@@ -235,14 +216,14 @@ export default function RestaurantOTP() {
       if (accessToken && restaurant) {
         // Store auth data using utility function to ensure proper module-specific token storage
         setRestaurantAuthData("restaurant", accessToken, restaurant)
-        
+
         // Dispatch custom event for same-tab updates
         window.dispatchEvent(new Event("restaurantAuthChanged"))
 
         sessionStorage.removeItem("restaurantAuthData")
 
         setTimeout(async () => {
-          console.log({authData})
+          console.log({ authData })
           // After signup, send to onboarding
           if (authData?.isSignUp) {
             navigate("/restaurant/onboarding", { replace: true })
@@ -293,7 +274,7 @@ export default function RestaurantOTP() {
       const purpose = authData.isSignUp ? "register" : "login"
       const phone = authData.method === "phone" ? authData.phone : null
       const email = authData.method === "email" ? authData.email : null
-      
+
       await restaurantAPI.sendOTP(phone, purpose, email)
     } catch (err) {
       const message =
@@ -355,7 +336,7 @@ export default function RestaurantOTP() {
             {otp.map((digit, index) => {
               const hasValue = digit !== ""
               const isFocused = focusedIndex === index
-              
+
               return (
                 <div key={index} className="relative flex flex-col items-center min-w-[48px] py-2" style={{ minHeight: '60px' }}>
                   {/* Clickable Input Area - Large clickable zone */}
@@ -413,11 +394,10 @@ export default function RestaurantOTP() {
                   if (nameError) setNameError("")
                 }}
                 placeholder="Enter your full name"
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${
-                  nameError
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-blue-500"
-                }`}
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 ${nameError
+                  ? "border-red-500 focus:ring-red-500"
+                  : "border-gray-300 focus:ring-blue-500"
+                  }`}
                 disabled={isLoading}
               />
               <p className="mt-1 text-xs text-gray-500">
@@ -464,11 +444,10 @@ export default function RestaurantOTP() {
           <Button
             onClick={() => handleVerify()}
             disabled={isLoading || !isOtpComplete}
-            className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${
-              !isLoading && isOtpComplete
-                ? "bg-blue-600 hover:bg-blue-700 text-white"
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
+            className={`w-full h-12 rounded-lg font-bold text-base transition-colors ${!isLoading && isOtpComplete
+              ? "bg-blue-600 hover:bg-blue-700 text-white"
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
           >
             {isLoading ? "Verifying..." : "Continue"}
           </Button>

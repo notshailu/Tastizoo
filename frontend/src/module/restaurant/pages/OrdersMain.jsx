@@ -465,7 +465,8 @@ function TableBookings() {
         if (restaurantId) {
           const response = await diningAPI.getRestaurantBookings(restaurantId)
           if (isMounted && response.data.success) {
-            setBookings(response.data.data)
+            const sortedBookings = [...response.data.data].sort((a, b) => b._id.localeCompare(a._id))
+            setBookings(sortedBookings)
           }
         }
       } catch (error) {

@@ -131,11 +131,10 @@ export default function Checkout() {
                         return (
                           <div
                             key={address.id}
-                            className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                              isSelected
+                            className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${isSelected
                                 ? "border-yellow-500 bg-yellow-50"
                                 : "border-gray-200 hover:border-yellow-300"
-                            }`}
+                              }`}
                             onClick={() => setSelectedAddress(address.id)}
                           >
                             <div className="flex items-start justify-between">
@@ -184,11 +183,10 @@ export default function Checkout() {
                         return (
                           <div
                             key={payment.id}
-                            className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${
-                              isSelected
+                            className={`border-2 rounded-lg p-4 cursor-pointer transition-colors ${isSelected
                                 ? "border-yellow-500 bg-yellow-50"
                                 : "border-gray-200 hover:border-yellow-300"
-                            }`}
+                              }`}
                             onClick={() => setSelectedPayment(payment.id)}
                           >
                             <div className="flex items-start justify-between">
@@ -281,12 +279,49 @@ export default function Checkout() {
                   </div>
 
                   <Button
-                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white mt-4 md:mt-6 h-11 md:h-12 text-sm md:text-base"
+                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white mt-4 md:mt-6 h-11 md:h-12 text-sm md:text-base shadow-lg active:scale-95 transition-all"
                     onClick={handlePlaceOrder}
                     disabled={isPlacingOrder || !selectedAddress || !selectedPayment}
                   >
-                    {isPlacingOrder ? "Placing Order..." : "Place Order"}
+                    {isPlacingOrder ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Securing Payment...</span>
+                      </div>
+                    ) : (
+                      "Confirm & Place Order"
+                    )}
                   </Button>
+
+                  {import.meta.env.DEV && (
+                    <div className="mt-8 pt-6 border-t border-dashed border-gray-200 dark:border-gray-800">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Testing Controls</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[10px] h-8"
+                          onClick={() => {
+                            setSelectedAddress(addresses[0]?.id || "");
+                            setSelectedPayment(paymentMethods[0]?.id || "");
+                          }}
+                        >
+                          Auto-Select
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[10px] h-8 text-red-500 hover:text-red-600"
+                          onClick={() => {
+                            clearCart();
+                            navigate("/user/cart");
+                          }}
+                        >
+                          Empty Cart
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </ScrollReveal>

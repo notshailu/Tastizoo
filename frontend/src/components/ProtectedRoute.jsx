@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children, requiredRole, loginPath }) {
     if (loginPath) {
       return <Navigate to={loginPath} state={{ from: location.pathname }} replace />;
     }
-    
+
     // Fallback: redirect to appropriate login page
     const roleLoginPaths = {
       'admin': '/admin/login',
@@ -29,7 +29,7 @@ export default function ProtectedRoute({ children, requiredRole, loginPath }) {
       'delivery': '/delivery/sign-in',
       'user': '/user/auth/sign-in'
     };
-    
+
     const redirectPath = roleLoginPaths[requiredRole] || '/';
     return <Navigate to={redirectPath} replace />;
   }

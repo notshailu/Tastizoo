@@ -127,7 +127,7 @@ export default function MyBookings() {
 
             <div className="p-4 space-y-4">
                 {bookings.length > 0 ? (
-                    bookings.map((booking) => (
+                    [...bookings].sort((a, b) => b._id.localeCompare(a._id)).map((booking) => (
                         <div key={booking._id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-start gap-4">
                             <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100">
                                 <img
@@ -170,6 +170,13 @@ export default function MyBookings() {
                                         {booking.guests} Guests
                                     </div>
                                 </div>
+
+                                {booking.specialRequest && (
+                                    <p className="text-[10px] text-gray-500 mt-2 flex items-start gap-1">
+                                        <span className="font-bold text-gray-700">Request:</span>
+                                        <span className="italic line-clamp-1">"{booking.specialRequest}"</span>
+                                    </p>
+                                )}
 
                                 {booking.status === 'completed' && (
                                     <button

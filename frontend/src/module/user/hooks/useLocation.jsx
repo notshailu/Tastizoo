@@ -102,7 +102,7 @@ export function useLocation() {
       const data = await res.json()
 
       return {
-        city: data.city || data.locality || "Unknown City",
+        city: data.city || data.locality || "",
         state: data.principalSubdivision || "",
         country: data.countryName || "",
         area: data.subLocality || "",
@@ -845,7 +845,7 @@ export function useLocation() {
 
       // Return location object with ZOMATO-STYLE exact location + Google Places API details
       const locationResult = {
-        city: city || "Unknown City",
+        city: city || "",
         state: state || "",
         area: area || city || "Location Found",
         address: displayAddress, // Locality parts for navbar display (e.g., "Mama Loca Cafe, 501 Princess Center")
@@ -1299,7 +1299,7 @@ export function useLocation() {
       // If we have a valid formatted address or city, return it
       if (formattedAddress || city) {
         const finalLocation = {
-          city: city || "Unknown City",
+          city: city || "",
           state: state || "",
           country: country || "",
           area: area || "", // Area is CRITICAL - must be extracted

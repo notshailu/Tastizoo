@@ -72,7 +72,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false }) =>
         <OptimizedImage
           src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop"
           alt={restaurant.name}
-          className="w-full h-full"
+          className="w-full h-full rounded-t-2xl sm:rounded-t-3xl"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           objectFit="cover"
           placeholder="blur"
@@ -123,7 +123,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false }) =>
 
   return (
     <div
-      className="relative h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-md flex-shrink-0 group"
+      className="relative h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-2xl sm:rounded-t-3xl flex-shrink-0 group"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -132,7 +132,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false }) =>
         <OptimizedImage
           src={images[currentIndex]}
           alt={`${restaurant.name} - Image ${currentIndex + 1}`}
-          className="w-full h-full"
+          className="w-full h-full rounded-t-2xl sm:rounded-t-3xl"
           priority={priority && currentIndex === 0}
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           objectFit="cover"
@@ -1198,7 +1198,7 @@ export default function Home() {
                 return (
                   <div
                     key={index}
-                    className="h-full flex-shrink-0"
+                    className="h-full flex-shrink-0 sm:px-4 lg:px-6"
                     style={{ width: '100vw', cursor: hasLinkedRestaurants ? 'pointer' : 'default' }}
                     onClick={() => {
                       if (hasLinkedRestaurants) {
@@ -1212,7 +1212,7 @@ export default function Home() {
                     <OptimizedImage
                       src={image}
                       alt={`Hero Banner ${index + 1}`}
-                      className="w-full h-full"
+                      className="w-full h-full sm:rounded-2xl lg:rounded-3xl shadow-md"
                       priority={index === 0}
                       sizes="100vw"
                       objectFit="cover"
@@ -1406,7 +1406,7 @@ export default function Home() {
                     whileTap={{ scale: 0.95 }}
                   >
                     <Link to={`/user/category/${category.slug || category.name.toLowerCase().replace(/\s+/g, '-')}`} className="flex flex-col items-center gap-2 group">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 relative">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 relative">
                         <OptimizedImage
                           src={category.image}
                           alt={category.name}
@@ -1457,7 +1457,7 @@ export default function Home() {
                     className="flex-shrink-0 transform transition-all duration-300 hover:scale-105 active:scale-95"
                   >
                     <Link to={`/user/category/${category.slug || category.label.toLowerCase().replace(/\s+/g, '-')}`} className="flex flex-col items-center gap-2 group">
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 relative">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 relative">
                         <OptimizedImage
                           src={category.imageUrl}
                           alt={category.label}
@@ -1801,7 +1801,7 @@ export default function Home() {
                   >
                     <div className="h-full group">
                       <Link to={`/user/restaurants/${restaurantSlug}`} className="h-full flex">
-                        <Card className={`overflow-hidden gap-0 cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] border-background transition-all duration-500 py-0 rounded-md flex flex-col h-full w-full relative ${isOutOfService ? 'grayscale opacity-75' : ''
+                        <Card className={`overflow-hidden gap-0 cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] border-background transition-all duration-500 py-0 rounded-2xl sm:rounded-3xl flex flex-col h-full w-full relative ${isOutOfService ? 'grayscale opacity-75' : ''
                           }`}>
                           {/* Image Section with Carousel */}
                           <div className="relative">
@@ -1880,7 +1880,7 @@ export default function Home() {
                           </div>
 
                           {/* Border Glow Effect */}
-                          <div className="absolute inset-0 rounded-md pointer-events-none z-0 transition-all duration-300 border border-transparent group-hover:border-green-500/30 group-hover:shadow-[inset_0_0_0_1px_rgba(34,197,94,0.2)]" />
+                          <div className="absolute inset-0 rounded-2xl sm:rounded-3xl pointer-events-none z-0 transition-all duration-300 border border-transparent group-hover:border-green-500/30 group-hover:shadow-[inset_0_0_0_1px_rgba(34,197,94,0.2)]" />
                         </Card>
                       </Link>
                     </div>

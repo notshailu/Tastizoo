@@ -144,7 +144,7 @@ apiClient.interceptors.request.use(
           requestUrl.match(/\/restaurant\/[^/]+\/offers/)));
 
     const isAuthenticatedRoute =
-      (path.startsWith("/admin") ||
+      ((path.startsWith("/admin") && !path.startsWith("/admin/login")) ||
         (path.startsWith("/restaurant") &&
           !path.startsWith("/restaurants") &&
           !isPublicRestaurantRoute) ||

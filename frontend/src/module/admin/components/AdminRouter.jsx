@@ -134,7 +134,7 @@ export default function AdminRouter() {
           }
         >
           {/* Dashboard */}
-          <Route path="/" element={<AdminHome />} />
+          <Route index element={<AdminHome />} />
 
 
           <Route path="/point-of-sale" element={<PointOfSale />} />
@@ -312,7 +312,7 @@ export default function AdminRouter() {
         </Route>
 
         {/* Redirect /admin to /admin/ */}
-        <Route path="" element={<Navigate to="/admin/login" replace />} />
+
       </Routes >
     </Suspense>
   );

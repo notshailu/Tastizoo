@@ -13,16 +13,18 @@ export function decodeToken(token) {
 
   try {
     // JWT format: header.payload.signature
-    const parts = token.split('.');
+    const parts = token.split(".");
     if (parts.length !== 3) return null;
 
     // Decode base64url encoded payload
     const payload = parts[1];
-    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    
+    const decoded = JSON.parse(
+      atob(payload.replace(/-/g, "+").replace(/_/g, "/")),
+    );
+
     return decoded;
   } catch (error) {
-    console.error('Error decoding token:', error);
+    console.error("Error decoding token:", error);
     return null;
   }
 }
@@ -44,8 +46,9 @@ export function getRoleFromToken(token) {
  */
 export function isTokenExpired(token) {
   const decoded = decodeToken(token);
-  if (!decoded || !decoded.exp) return true;
-  
+  if (!decoded) return true;
+  if (!decoded.exp) return false;
+
   // exp is in seconds, Date.now() is in milliseconds
   return decoded.exp * 1000 < Date.now();
 }
@@ -68,10 +71,10 @@ export function getUserIdFromToken(token) {
  */
 export function hasModuleAccess(role, module) {
   const roleModuleMap = {
-    'admin': 'admin',
-    'restaurant': 'restaurant',
-    'delivery': 'delivery',
-    'user': 'user'
+    admin: "admin",
+    restaurant: "restaurant",
+    delivery: "delivery",
+    user: "user",
   };
 
   return roleModuleMap[role] === module;
@@ -96,26 +99,26 @@ export function getCurrentUserRole(module = null) {
   if (module) {
     const token = getModuleToken(module);
     if (!token) return null;
-    
+
     if (isTokenExpired(token)) {
       // Token expired, clear it
       clearModuleAuth(module);
       return null;
     }
-    
+
     return getRoleFromToken(token);
   }
-  
+
   // Legacy: check all modules and return the first valid role found
   // This is for backward compatibility but should be avoided
-  const modules = ['user', 'restaurant', 'delivery', 'admin'];
+  const modules = ["user", "restaurant", "delivery", "admin"];
   for (const mod of modules) {
     const token = getModuleToken(mod);
     if (token && !isTokenExpired(token)) {
       return getRoleFromToken(token);
     }
   }
-  
+
   return null;
 }
 
@@ -127,12 +130,12 @@ export function getCurrentUserRole(module = null) {
 export function isModuleAuthenticated(module) {
   const token = getModuleToken(module);
   if (!token) return false;
-  
+
   if (isTokenExpired(token)) {
     clearModuleAuth(module);
     return false;
   }
-  
+
   return true;
 }
 
@@ -152,13 +155,13 @@ export function clearModuleAuth(module) {
  * Clear all authentication data for all modules
  */
 export function clearAuthData() {
-  const modules = ['admin', 'restaurant', 'delivery', 'user'];
-  modules.forEach(module => {
+  const modules = ["admin", "restaurant", "delivery", "user"];
+  modules.forEach((module) => {
     clearModuleAuth(module);
   });
   // Also clear legacy token if it exists
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('user');
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("user");
 }
 
 /**
@@ -171,8 +174,8 @@ export function clearAuthData() {
 export function setAuthData(module, token, user) {
   try {
     // Check if localStorage is available
-    if (typeof Storage === 'undefined' || !localStorage) {
-      throw new Error('localStorage is not available');
+    if (typeof Storage === "undefined" || !localStorage) {
+      throw new Error("localStorage is not available");
     }
 
     // Validate inputs
@@ -183,7 +186,7 @@ export function setAuthData(module, token, user) {
     console.log(`[setAuthData] Storing auth for module: ${module}`, {
       hasToken: !!token,
       tokenLength: token?.length,
-      hasUser: !!user
+      hasUser: !!user,
     });
 
     // Store module-specific token (don't clear other modules)
@@ -192,13 +195,16 @@ export function setAuthData(module, token, user) {
     const userKey = `${module}_user`;
 
     localStorage.setItem(tokenKey, token);
-    localStorage.setItem(authKey, 'true');
-    
+    localStorage.setItem(authKey, "true");
+
     if (user) {
       try {
         localStorage.setItem(userKey, JSON.stringify(user));
       } catch (userError) {
-        console.warn('Failed to store user data, but token was stored:', userError);
+        console.warn(
+          "Failed to store user data, but token was stored:",
+          userError,
+        );
         // Don't throw - token storage is more important
       }
     }
@@ -206,52 +212,62 @@ export function setAuthData(module, token, user) {
     // Verify the token was stored correctly
     const storedToken = localStorage.getItem(tokenKey);
     const storedAuth = localStorage.getItem(authKey);
-    
+
     if (storedToken !== token) {
       console.error(`[setAuthData] Token mismatch:`, {
-        expected: token?.substring(0, 20) + '...',
-        stored: storedToken?.substring(0, 20) + '...'
+        expected: token?.substring(0, 20) + "...",
+        stored: storedToken?.substring(0, 20) + "...",
       });
-      throw new Error(`Token storage verification failed for module: ${module}`);
+      throw new Error(
+        `Token storage verification failed for module: ${module}`,
+      );
     }
 
-    if (storedAuth !== 'true') {
+    if (storedAuth !== "true") {
       console.error(`[setAuthData] Auth flag mismatch:`, {
-        expected: 'true',
-        stored: storedAuth
+        expected: "true",
+        stored: storedAuth,
       });
-      throw new Error(`Authentication flag storage failed for module: ${module}`);
+      throw new Error(
+        `Authentication flag storage failed for module: ${module}`,
+      );
     }
 
     console.log(`[setAuthData] Successfully stored auth data for ${module}`);
   } catch (error) {
     // If quota exceeded, try to clear some space
-    if (error.name === 'QuotaExceededError' || error.code === 22) {
-      console.warn('localStorage quota exceeded. Attempting to clear old data...');
+    if (error.name === "QuotaExceededError" || error.code === 22) {
+      console.warn(
+        "localStorage quota exceeded. Attempting to clear old data...",
+      );
       // Clear legacy tokens
       try {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('user');
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
         // Retry storing
         localStorage.setItem(`${module}_accessToken`, token);
-        localStorage.setItem(`${module}_authenticated`, 'true');
+        localStorage.setItem(`${module}_authenticated`, "true");
         if (user) {
           localStorage.setItem(`${module}_user`, JSON.stringify(user));
         }
-        
+
         // Verify again after retry
         const storedToken = localStorage.getItem(`${module}_accessToken`);
         if (storedToken !== token) {
-          throw new Error('Token storage failed even after clearing space');
+          throw new Error("Token storage failed even after clearing space");
         }
       } catch (retryError) {
-        console.error('Failed to store auth data after clearing space:', retryError);
-        throw new Error('Unable to store authentication data. Please clear browser storage and try again.');
+        console.error(
+          "Failed to store auth data after clearing space:",
+          retryError,
+        );
+        throw new Error(
+          "Unable to store authentication data. Please clear browser storage and try again.",
+        );
       }
     } else {
-      console.error('[setAuthData] Error storing auth data:', error);
+      console.error("[setAuthData] Error storing auth data:", error);
       throw error;
     }
   }
 }
-

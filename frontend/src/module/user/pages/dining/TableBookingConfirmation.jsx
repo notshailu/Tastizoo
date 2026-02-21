@@ -1,12 +1,12 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { ArrowLeft, Calendar, Users, MapPin, Ticket, ChevronRight, Edit2, ShieldCheck, Info } from "lucide-react"
+import { ArrowLeft, Calendar, Users, MapPin, Ticket, ChevronRight, Edit2, ShieldCheck, Info, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import AnimatedPage from "../../components/AnimatedPage"
 import { diningAPI, authAPI } from "@/lib/api"
-import { useEffect } from "react"
 import { toast } from "sonner"
 import Loader from "@/components/Loader"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function TableBookingConfirmation() {
     const location = useLocation()
@@ -14,6 +14,8 @@ export default function TableBookingConfirmation() {
     const { restaurant, guests, date, timeSlot, discount } = location.state || {}
 
     const [specialRequest, setSpecialRequest] = useState("")
+    const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
+    const [tempRequest, setTempRequest] = useState("")
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const [bookingInProgress, setBookingInProgress] = useState(false)
@@ -62,6 +64,11 @@ export default function TableBookingConfirmation() {
         } finally {
             setBookingInProgress(false)
         }
+    }
+
+    const handleSaveRequest = () => {
+        setSpecialRequest(tempRequest)
+        setIsRequestModalOpen(false)
     }
 
     if (loading) return <Loader />
@@ -119,12 +126,21 @@ export default function TableBookingConfirmation() {
                 </div>
 
                 {/* Special Request */}
-                <button className="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between group">
+                <button
+                    onClick={() => {
+                        setTempRequest(specialRequest)
+                        setIsRequestModalOpen(true)
+                    }}
+                    className="w-full bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between group"
+                >
                     <div className="flex items-center gap-3">
                         <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-slate-200 transition-colors">
                             <Info className="w-5 h-5 text-slate-600" />
                         </div>
-                        <span className="font-bold text-gray-700">Add special request</span>
+                        <div className="text-left">
+                            <span className="font-bold text-gray-700 block">{specialRequest ? "Special Request Added" : "Add special request"}</span>
+                            {specialRequest && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{specialRequest}</p>}
+                        </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-400" />
                 </button>
@@ -223,6 +239,70 @@ export default function TableBookingConfirmation() {
                     {bookingInProgress ? "Confirming..." : "Confirm your seat"}
                 </Button>
             </div>
+            {/* Special Request Modal */}
+            <AnimatePresence>
+                {isRequestModalOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsRequestModalOpen(false)}
+                            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+                        />
+                        <motion.div
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 w-full bg-white rounded-t-[32px] p-6 z-[101] max-h-[80vh] overflow-y-auto"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold text-gray-900">Add Special Request</h3>
+                                <button
+                                    onClick={() => setIsRequestModalOpen(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                                >
+                                    <X className="w-6 h-6 text-slate-500" />
+                                </button>
+                            </div>
+
+                            <p className="text-slate-500 text-sm mb-4 leading-relaxed">
+                                Share any preferences like window seat, food allergies, or special occasion requests. We'll pass them to the restaurant.
+                            </p>
+
+                            <div className="relative group">
+                                <textarea
+                                    value={tempRequest}
+                                    onChange={(e) => setTempRequest(e.target.value)}
+                                    placeholder="e.g. It's our anniversary, would love a quiet table by the window."
+                                    className="w-full h-40 p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-[#ef4444] focus:bg-white outline-none transition-all resize-none font-medium text-gray-700"
+                                    maxLength={250}
+                                />
+                                <div className="absolute bottom-4 right-4 text-[10px] font-bold text-slate-400">
+                                    {tempRequest.length}/250
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 mt-8">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setIsRequestModalOpen(false)}
+                                    className="flex-1 h-14 rounded-2xl border-2 font-bold text-slate-600"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleSaveRequest}
+                                    className="flex-1 h-14 bg-[#ef4444] hover:bg-red-600 rounded-2xl font-bold shadow-lg shadow-red-100"
+                                >
+                                    Save Request
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </AnimatedPage>
     )
 }
